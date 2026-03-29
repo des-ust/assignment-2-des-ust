@@ -43,6 +43,10 @@ public class CORStripes extends Configured implements Tool {
 			/*
 			 * TODO: Your implementation goes here.
 			 */
+			while (doc_tokenizer.hasMoreTokens()) {
+            	String word = doc_tokenizer.nextToken();
+            	context.write(new Text(word), ONE);
+        	}
 		}
 	}
 
@@ -56,6 +60,12 @@ public class CORStripes extends Configured implements Tool {
 			/*
 			 * TODO: Your implementation goes here.
 			 */
+			int sum = 0;
+        	for (IntWritable val : values) {
+            	sum += val.get();
+        	}
+        	SUM.set(sum);
+        	context.write(key, SUM);
 		}
 	}
 
@@ -75,6 +85,20 @@ public class CORStripes extends Configured implements Tool {
 			/*
 			 * TODO: Your implementation goes here.
 			 */
+			List<String> words = new ArrayList<>(sorted_word_set);
+        	for (int i = 0; i < words.size(); i++) {
+            	String a = words.get(i);
+            	MapWritable stripe = new MapWritable();
+
+            	for (int j = i + 1; j < words.size(); j++) {
+                	String b = words.get(j);
+                	stripe.put(new Text(b), ONE);
+            	}
+
+            	if (!stripe.isEmpty()) {
+                	context.write(new Text(a), stripe);
+            	}
+        	}
 		}
 	}
 
@@ -89,6 +113,21 @@ public class CORStripes extends Configured implements Tool {
 			/*
 			 * TODO: Your implementation goes here.
 			 */
+			MapWritable result = new MapWritable();
+
+        	for (MapWritable map : values) {
+            	for (Writable k : map.keySet()) {
+                	IntWritable val = (IntWritable) map.get(k);
+                	IntWritable current = (IntWritable) result.get(k);
+
+                	if (current == null) {
+                    	result.put(k, new IntWritable(val.get()));
+                	} else {
+                    	current.set(current.get() + val.get());
+                	}
+            	}
+        	}
+        	context.write(key, result);
 		}
 	}
 
@@ -142,6 +181,38 @@ public class CORStripes extends Configured implements Tool {
 			/*
 			 * TODO: Your implementation goes here.
 			 */
+			MapWritable finalStripe = new MapWritable();
+
+    		for (MapWritable map : values) {
+        		for (Writable k : map.keySet()) {
+            		IntWritable val = (IntWritable) map.get(k);
+            		IntWritable current = (IntWritable) finalStripe.get(k);
+
+            		if (current == null) {
+                		finalStripe.put(k, new IntWritable(val.get()));
+            		} else {
+                		current.set(current.get() + val.get());
+            		}
+        		}
+    		}
+
+    		String a = key.toString();
+    		Integer freqA = word_total_map.get(a);
+    		if (freqA == null || freqA == 0) return;
+
+    		for (Writable wB : finalStripe.keySet()) {
+        		String b = wB.toString();
+        		Integer freqB = word_total_map.get(b);
+        		if (freqB == null || freqB == 0) continue;
+
+        		IntWritable coCountWritable = (IntWritable) finalStripe.get(wB);
+        		int coCount = coCountWritable.get();
+
+        		double cor = (double) coCount / (freqA * freqB);
+
+        		PairOfStrings pair = new PairOfStrings();
+        		pair.set(a, b);
+        		context.write(pair, new DoubleWritable(cor));
 		}
 	}
 
