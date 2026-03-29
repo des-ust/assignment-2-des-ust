@@ -71,14 +71,60 @@ public class BigramFrequencyPairs extends Configured implements Tool {
 		// Reuse objects.
 		private final static FloatWritable VALUE = new FloatWritable();
 
+		private String currentLeft = null;
+        private int currentTotal = 0;
+        private Map<String, Integer> currentCounts = new HashMap<>();
+		
 		@Override
 		public void reduce(PairOfStrings key, Iterable<IntWritable> values,
 				Context context) throws IOException, InterruptedException {
 			/*
 			 * TODO: Your implementation goes here.
 			 */
-			
+			String left = key.getLeftElement().toString();
+            String right = key.getRightElement().toString();
+
+            int count = 0;
+            for (IntWritable val : values) {
+                count += val.get();
+            }
+
+            if (currentLeft == null) {
+                currentLeft = left;
+            }
+            if (!left.equals(currentLeft)) {
+                outputCurrentGroup(context);
+                currentLeft = left;
+                currentTotal = 0;
+                currentCounts.clear();
+            }
+
+            currentCounts.put(right, count);
+            currentTotal += count;
 		}
+		private void outputCurrentGroup(Context context) throws IOException, InterruptedException {
+        	if (currentLeft == null || currentTotal == 0) return;
+        	PairOfStrings totalKey = new PairOfStrings();
+        	totalKey.set(currentLeft, "*");
+        	VALUE.set((float) currentTotal);
+        	context.write(totalKey, VALUE);
+			
+        	for (Map.Entry<String, Integer> entry : currentCounts.entrySet()) {
+            	String right = entry.getKey();
+            	float prob = (float) entry.getValue() / currentTotal;
+
+            	PairOfStrings bigramKey = new PairOfStrings();
+            	bigramKey.set(currentLeft, right);
+            	VALUE.set(prob);
+            	context.write(bigramKey, VALUE);
+        	}
+    	}
+
+    	@Override
+    	protected void cleanup(Context context) throws IOException, InterruptedException {
+        	outputCurrentGroup(context);
+        	super.cleanup(context);
+    	}
 	}
 	
 	private static class MyCombiner extends
