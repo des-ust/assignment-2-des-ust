@@ -31,6 +31,11 @@ import java.net.URI;
 import java.util.*;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.StringTokenizer;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 /**
  * Compute the bigram count using "pairs" approach
@@ -53,6 +58,10 @@ public class CORPairs extends Configured implements Tool {
 			/*
 			 * TODO: Your implementation goes here.
 			 */
+			while (doc_tokenizer.hasMoreTokens()) {
+            	String word = doc_tokenizer.nextToken();
+            	context.write(new Text(word), ONE);
+        	}
 		}
 	}
 
@@ -66,6 +75,12 @@ public class CORPairs extends Configured implements Tool {
 			/*
 			 * TODO: Your implementation goes here.
 			 */
+			int sum = 0;
+        	for (IntWritable val : values) {
+            	sum += val.get();
+        	}
+        	SUM.set(sum);
+        	context.write(key, SUM);
 		}
 	}
 
@@ -81,6 +96,28 @@ public class CORPairs extends Configured implements Tool {
 			/*
 			 * TODO: Your implementation goes here.
 			 */
+			Set<String> uniqueWords = new HashSet<>();
+        	while (doc_tokenizer.hasMoreTokens()) {
+            	uniqueWords.add(doc_tokenizer.nextToken());
+        	}
+        	List<String> words = new ArrayList<>(uniqueWords);
+
+        	for (int i = 0; i < words.size(); i++) {
+            	for (int j = i + 1; j < words.size(); j++) {
+                	String w1 = words.get(i);
+                	String w2 = words.get(j);
+
+                	if (w1.compareTo(w2) > 0) {
+                    	String temp = w1;
+                    	w1 = w2;
+                    	w2 = temp;
+                	}
+
+                	PairOfStrings pair = new PairOfStrings();
+                	pair.set(w1, w2);
+                	context.write(pair, ONE);
+            	}
+        	}
 		}
 	}
 
@@ -93,6 +130,12 @@ public class CORPairs extends Configured implements Tool {
 			/*
 			 * TODO: Your implementation goes here.
 			 */
+			int sum = 0;
+        	for (IntWritable val : values) {
+            	sum += val.get();
+        	}
+        	SUM.set(sum);
+        	context.write(key, SUM);
 		}
 	}
 
@@ -145,6 +188,23 @@ public class CORPairs extends Configured implements Tool {
 			/*
 			 * TODO: Your implementation goes here.
 			 */
+			int coCount = 0;
+    		for (IntWritable val : values) {
+        		coCount += val.get();
+    		}
+
+    		String a = key.getLeftElement().toString();
+    		String b = key.getRightElement().toString();
+
+    		Integer freqA = word_total_map.get(a);
+    		Integer freqB = word_total_map.get(b);
+
+    		double cor = 0.0;
+    		if (freqA != null && freqB != null && freqA > 0 && freqB > 0) {
+        		cor = (double) coCount / (freqA * freqB);
+    		}
+
+    		context.write(key, new DoubleWritable(cor));
 		}
 	}
 
