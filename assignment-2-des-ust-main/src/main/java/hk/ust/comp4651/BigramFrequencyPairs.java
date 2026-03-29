@@ -27,6 +27,8 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 import org.apache.log4j.Logger;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Compute the bigram count using "pairs" approach
@@ -53,6 +55,10 @@ public class BigramFrequencyPairs extends Configured implements Tool {
 			/*
 			 * TODO: Your implementation goes here.
 			 */
+			for (int i = 0; i < words.length - 1; i++) {
+                BIGRAM.set(words[i], words[i + 1]);
+                context.write(BIGRAM, ONE);
+            }
 		}
 	}
 
@@ -71,6 +77,7 @@ public class BigramFrequencyPairs extends Configured implements Tool {
 			/*
 			 * TODO: Your implementation goes here.
 			 */
+			
 		}
 	}
 	
@@ -84,6 +91,12 @@ public class BigramFrequencyPairs extends Configured implements Tool {
 			/*
 			 * TODO: Your implementation goes here.
 			 */
+			int sum = 0;
+        	for (IntWritable val : values) {
+            	sum += val.get();
+        	}
+        	SUM.set(sum);
+        	context.write(key, SUM);
 		}
 	}
 
